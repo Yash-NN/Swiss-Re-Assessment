@@ -1,6 +1,8 @@
 package com.bigcompany.analyzer;
 
 import com.bigcompany.model.Employee;
+import com.bigcompany.result.ReportingLineIssue;
+import com.bigcompany.result.SalaryIssue;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,24 +10,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Analyzes the organizational structure for policy violations.
- *
- * Salary policy:
- *   - A manager must earn at least 20% more than the average salary of their direct reports
- *   - A manager must earn no more than 50% more than that average
- *
- * Reporting line policy:
- *   - An employee must not have more than 4 managers between them and the CEO
- *
- * Assumption: depth is the count of managers strictly above an employee.
- *   CEO -> depth 0, CEO's direct report -> depth 1. Flagged when depth > 4.
- */
+// Analyzes org structure for salary and reporting line policy violations.
+// Salary: manager must earn 20%-50% more than their direct reports average.
+// Reporting line: flags employees with more than 4 managers above them.
 public class OrgAnalyzer {
 
-    static final double MIN_SALARY_RATIO    = 1.20;
-    static final double MAX_SALARY_RATIO    = 1.50;
-    static final int    MAX_REPORTING_DEPTH = 4;
+    public static final double MIN_SALARY_RATIO    = 1.20;
+    public static final double MAX_SALARY_RATIO    = 1.50;
+    public static final int    MAX_REPORTING_DEPTH = 4;
 
     private final Map<Integer, Employee>       employeesById;
     private final Map<Integer, List<Employee>> directReports;
@@ -35,12 +27,9 @@ public class OrgAnalyzer {
         this.directReports = buildDirectReportsMap(employees);
     }
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
-    public List<String> findSalaryIssues() {
-        List<String> issues = new ArrayList<>();
+    // function to find salary issues
+    public List<SalaryIssue> findSalaryIssues() {
+        List<SalaryIssue> issues = new ArrayList<>();
 
         for (Employee manager : employeesById.values()) {
             List<Employee> reports = directReports.getOrDefault(manager.getId(), Collections.emptyList());
@@ -52,42 +41,35 @@ public class OrgAnalyzer {
 
             if (manager.getSalary() < minAllowed) {
                 double shortfall = minAllowed - manager.getSalary();
-                issues.add(String.format(
-                        "%s earns less than required by %.2f (earns %.2f, should earn at least %.2f)",
-                        manager.getFullName(), shortfall, manager.getSalary(), minAllowed));
+                issues.add(new SalaryIssue(manager, SalaryIssue.Type.UNDERPAID,
+                        manager.getSalary(), minAllowed, shortfall));
 
             } else if (manager.getSalary() > maxAllowed) {
                 double excess = manager.getSalary() - maxAllowed;
-                issues.add(String.format(
-                        "%s earns more than allowed by %.2f (earns %.2f, should earn at most %.2f)",
-                        manager.getFullName(), excess, manager.getSalary(), maxAllowed));
+                issues.add(new SalaryIssue(manager, SalaryIssue.Type.OVERPAID,
+                        manager.getSalary(), maxAllowed, excess));
             }
         }
 
         return issues;
     }
 
-    public List<String> findReportingLineIssues() {
-        List<String> issues = new ArrayList<>();
+    public List<ReportingLineIssue> findReportingLineIssues() {
+        List<ReportingLineIssue> issues = new ArrayList<>();
 
         for (Employee employee : employeesById.values()) {
             int depth = computeDepth(employee);
 
             if (depth > MAX_REPORTING_DEPTH) {
                 int excess = depth - MAX_REPORTING_DEPTH;
-                issues.add(String.format(
-                        "%s has a manager reporting depth which is %d level(s) too long (depth: %d)",
-                        employee.getFullName(), excess, depth));
+                issues.add(new ReportingLineIssue(employee, depth, excess));
             }
         }
 
         return issues;
     }
 
-    // -------------------------------------------------------------------------
-    // Package-private for testing
-    // -------------------------------------------------------------------------
-
+    // Core logic methods
     int computeDepth(Employee employee) {
         int depth = 0;
         Integer currentManagerId = employee.getManagerId();
@@ -109,10 +91,7 @@ public class OrgAnalyzer {
                 .orElse(0.0);
     }
 
-    // -------------------------------------------------------------------------
-    // Private helpers
-    // -------------------------------------------------------------------------
-
+    // Helper methods
     private Map<Integer, Employee> buildEmployeeMap(List<Employee> employees) {
         Map<Integer, Employee> map = new HashMap<>();
         for (Employee e : employees) map.put(e.getId(), e);
