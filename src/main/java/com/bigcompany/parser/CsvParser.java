@@ -8,19 +8,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Parses a CSV file into a list of Employee objects.
- *
- * Expected format (with header row):
- *   Id,firstName,lastName,salary,managerId
- *
- * Assumptions:
- * - First row is always a header and is skipped
- * - managerId column is empty for the CEO
- * - Blank lines are silently skipped
- * - Rows with wrong column count are skipped with a warning to stderr
- * - Rows with non-numeric id/salary/managerId are skipped with a warning to stderr
- */
+// Reads the CSV file and maps each row to an Employee object.
+// Skips the header row, blank lines, and any rows having issuss with a warning.
 public class CsvParser {
 
     private static final int EXPECTED_COLUMNS = 5;
