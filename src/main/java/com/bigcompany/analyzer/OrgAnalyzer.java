@@ -32,8 +32,9 @@ public class OrgAnalyzer {
     }
 
     // function to find salary issues
+    // parallelStream used here so large datasets can be processed across multiple threads
     public List<SalaryIssue> findSalaryIssues() {
-        return employeesById.values().stream()
+        return employeesById.values().parallelStream()
                 .map(manager -> checkSalary(manager,
                         directReports.getOrDefault(manager.getId(), Collections.emptyList())))
                 .filter(Optional::isPresent)
@@ -41,8 +42,9 @@ public class OrgAnalyzer {
                 .collect(Collectors.toList());
     }
 
+    // parallelStream is safe here as both maps are read-only after construction
     public List<ReportingLineIssue> findReportingLineIssues() {
-        return employeesById.values().stream()
+        return employeesById.values().parallelStream()
                 .map(employee -> checkReportingLine(employee, computeDepth(employee)))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
